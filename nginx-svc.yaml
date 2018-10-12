@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Service
+metadata: {name: k8s-nginx-ssl-service}
+spec:
+  ports:
+  - {name: http, port: 80, targetPort: 80}
+  - {name: https, port: 443, targetPort: 443}
+  selector: {app: k8s-nginx-ssl}
+  type: LoadBalancer

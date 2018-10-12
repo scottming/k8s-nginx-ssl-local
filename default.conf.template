@@ -1,0 +1,23 @@
+server {
+    listen       80;
+    server_name  ${SERVER_NAME};
+    return 301 https://${DOLLAR}server_name${DOLLAR}request_uri;
+}
+
+server {
+    listen       443 default_server ssl;
+    server_name  ${SERVER_NAME};
+
+    ssl_certificate      /etc/nginx/ssl/ssl.crt;
+    ssl_certificate_key  /etc/nginx/ssl/ssl.key;
+
+    location / {
+        root   /usr/share/nginx/html;
+        index  index.html index.htm;
+    }
+
+    error_page   500 502 503 504  /50x.html;
+    location = /50x.html {
+        root   /usr/share/nginx/html;
+    }
+}

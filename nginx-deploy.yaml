@@ -1,0 +1,17 @@
+apiVersion: apps/v1
+kind: Deployment  
+metadata: {name: k8s-nginx-ssl-deploy}  
+spec:
+  replicas: 1  
+  selector:
+    matchLabels: {app: k8s-nginx-ssl}  
+  template:
+    metadata:
+      labels: {app: k8s-nginx-ssl}  
+    spec:
+      containers:
+      - image: k8s-nginx-ssl:v0.1.1
+        name: k8s-nginx-ssl
+        ports:
+        - {containerPort: 80}
+        - {containerPort: 443}
