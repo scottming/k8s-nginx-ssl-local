@@ -10,8 +10,9 @@ macOS 本地搭建 k8s 请参考这个仓库：[maguowei/k8s-docker-for-mac: Doc
 搭建好了之后，启动 Docker GUI 即可。
 
 ## 准备 Dockerfile 
+
 ```Dockerfile
-FROM ccr.ccs.tencentyun.com/ai-hub/nginx:1.13.9-alpine
+FROM nginx:1.15.4-alpine
 RUN cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
 
 ARG SSL_KEY=ssl-key
