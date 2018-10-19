@@ -1,68 +1,45 @@
 # k8s 如何在本地调试 SSL
-* 本地搭建 k8s
-* 准备 Dockerfile 
-* 准备 ssl 证书文件并构建 Docker 镜像
-* 运行 deploy 以及 service 并修改 host
 
-## 本地搭建 k8s
+## 1. 本地搭建 k8s
+
 macOS 本地搭建 k8s 请参考这个仓库：[maguowei/k8s-docker-for-mac: Docker for Mac开启 Kubernetes 集群](https://github.com/maguowei/k8s-docker-for-mac)
 
 搭建好了之后，启动 Docker GUI 即可。
 
-## 准备 Dockerfile 
+## 2. 克隆本仓库
 
-```Dockerfile
-FROM nginx:1.15.4-alpine
-RUN cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
+注意：Dockerfile 和 default.conf.template 对环境变量有依赖，而环境变量和部分配置文件已加入到 .gitignore，所以仓库没有。
 
-ARG SSL_KEY=ssl-key
-ARG SSL_CRT=ssl-crt
-ARG SERVER_NAME=mynginx.com
-ENV SSL_KEY ${SSL_KEY}
-ENV SSL_CRT ${SSL_CRT}
-ENV SERVER_NAME ${SERVER_NAME}
-
-RUN mkdir -p /etc/nginx/ssl/
-ADD ${SSL_KEY} /etc/nginx/ssl/ssl.key
-ADD ${SSL_CRT} /etc/nginx/ssl/ssl.crt
-
-COPY default.conf.template /etc/nginx/conf.d/
-RUN export DOLLAR='$' && envsubst < /etc/nginx/conf.d/default.conf.template > /etc/nginx/conf.d/default.conf
-
-EXPOSE 80 443
-CMD ["nginx", "-g", "daemon off;"]
-```
-
-这里用了 template，以及  `ADD` 命令，这样我们就能方便的用环境变量控制 `server_name` 以及 SSL 证书了。
-
-## 准备 ssl 证书文件并构建 Docker 镜像
+所以你还需要建一个 `envfiles` 的文件夹，生成 ssl 配置的时候会用到，另外构建镜像时需要一些环境变量，可以用 export 的方式，但更建议用 `.env` 并配合 `autoenv` 这个工具。
 
 ```bash
+$ brew install autoenv
 $ mkdir envfiles && touch .env
-$ echo "envfiles\n.env" >> .gitignore
 ```
 
-参考这篇文章可以生成 chrome 不报错的证书，[How to get HTTPS working on your local development environment in 5 minutes](https://medium.freecodecamp.org/how-to-get-https-working-on-your-local-development-environment-in-5-minutes-7af615770eec)。
+新建 `.env` 文件后，稍后往里面加一些内容。
 
-前3步参考上面文章，后面针对某个域名生成 ssl 文件，建议用我新增的脚本[local-cert-generator/g_ssl_for_domain.sh at master · scottming/local-cert-generator · GitHub](https://github.com/scottming/local-cert-generator/blob/master/g_ssl_for_domain.sh) 。
+## 3. 准备 ssl 证书文件并构建 Docker 镜像
+
+
+参考此仓库 https://github.com/scottming/local-cert-generator 前3步可生成根证书，对根证书开启验证之后，针对某个域名生成 ssl 文件，用我新增的脚本[local-cert-generator/g_ssl_for_domain.sh at master · scottming/local-cert-generator · GitHub](https://github.com/scottming/local-cert-generator/blob/master/g_ssl_for_domain.sh) 。
 
 ```bash
 $ j local-cert-generator
-$ ./g_ssl_for_domain.sh mynginx.com  /Users/scottming/Documents/ExRepos/k8s-nginx-ssl/envfiles # ./g_ssl_for_domain.sh <domian> <path>
+$ # ./g_ssl_for_domain.sh <domian> <path>
+$ ./g_ssl_for_domain.sh mynginx.com  /Users/scottming/Documents/ExRepos/k8s-nginx-ssl/envfiles 
 ```
 
-`<path>` 参数建议换成代码文件根目录下的 `envfiles` 并把其添加到 .gitignore
-
-接下来切合代码文件夹，设置环境变量(推荐 autoenv 自动检测 .env 文件)并构建镜像：
+`<path>` 参数换成代码文件根目录下的 `envfiles`，运行完上述命令，如果没报错，本仓库目录的envfiles下应该多了3个文件
 
 ```
-$ j k8s-nginx-ssl
-$ echo "SSL_KEY=./envfiles/server.key\nSSL_CRT=./envfiles/server.crt\n" >> .env
+$ j k8s-nginx-ssl # 跳回教程仓库，autojump
+$ echo "SSL_KEY=./envfiles/server.key\nSSL_CRT=./envfiles/server.crt\n" >> .env # 新增环境变量至 .env 文件
+$ cd ../k8s-nginx-ssl-local # 让 .env 文件生效，依赖 autoenv 这个工具
 $ docker build . -t k8s-nginx-ssl:v0.1.1 --build-arg SSL_CRT=$SSL_CRT --build-arg SSL_KEY=$SSL_KEY
 ```
 
-
-## k8s 运行 deploy 及 svc
+## 4. k8s 运行 deploy 及 svc
 
 yaml 文件请参考本仓库：https://github.com/scottming/k8s-nginx-ssl-local
 
